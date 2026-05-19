@@ -39,7 +39,7 @@
 
 <h3>☁️ One-Click Deploy</h3>
 <p>
-  <a href="https://heroku.com/deploy?template=https://github.com/TheTeamVivek/YukkiMusic">
+  <a href="https://heroku.com/deploy?template=https://github.com/teamsuraj2/DNSMUSIC">
     <img src="https://www.herokucdn.com/deploy/button.svg" alt="Deploy to Heroku">
   </a>
 </p>
