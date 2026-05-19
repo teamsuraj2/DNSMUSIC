@@ -9,7 +9,6 @@ import (
 	"github.com/Laky-64/gologging"
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/internal/config"
 	state "main/internal/core/models"
 )
 
@@ -77,11 +76,10 @@ func (f *ShrutiApiPlatform) download(ctx context.Context, track *state.Track) (s
 	}
 
 	dlURL := fmt.Sprintf(
-		"%s/download?url=%s&type=%s&api_key=%s",
-		config.ShrutiAPIURL,
+		"https://api.shrutibots.site/download?url=%s&type=%s&api_key=%s",
 		videoID,
 		mediaType,
-		config.ShrutiAPIKey,
+		os.Getenv("SHRUTI_API_KEY"),
 	)
 
 	path := getPath(track, ext)
