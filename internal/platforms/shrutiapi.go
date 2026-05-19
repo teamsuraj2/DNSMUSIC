@@ -37,13 +37,9 @@ func (f *ShrutiApiPlatform) GetTracks(_ string, _ bool) ([]*state.Track, error) 
 }
 
 func (f *ShrutiApiPlatform) CanDownload(source state.PlatformName) bool {
-	apiURL := os.Getenv("SHRUTI_API_URL")
-	apiKey := os.Getenv("SHRUTI_API_KEY")
-
-	if apiURL == "" || apiKey == "" {
+	if config.ShrutiAPIURL == "" || config.ShrutiAPIKey == "" {
 		return false
 	}
-
 	return source == PlatformYouTube
 }
 
@@ -60,9 +56,7 @@ func (f *ShrutiApiPlatform) Download(
 	return f.download(ctx, track)
 }
 
-func (*ShrutiApiPlatform) CanSearch() bool {
-	return false
-}
+func (*ShrutiApiPlatform) CanSearch() bool { return false }
 
 func (*ShrutiApiPlatform) Search(string, bool) ([]*state.Track, error) {
 	return nil, nil
@@ -76,25 +70,16 @@ func (f *ShrutiApiPlatform) download(ctx context.Context, track *state.Track) (s
 
 	mediaType := "audio"
 	ext := ".mp3"
-
 	if track.Video {
 		mediaType = "video"
 		ext = ".mp4"
 	}
 
-	apiURL := os.Getenv("SHRUTI_API_URL")
-	apiKey := os.Getenv("SHRUTI_API_KEY")
-
-	if apiURL == "" {
-		apiURL = "https://api.shrutibots.site"
-	}
-
 	dlURL := fmt.Sprintf(
-		"%s/download?url=%s&type=%s&api_key=%s",
-		apiURL,
+		"https://api.shrutibots.site/download?url=%s&type=%s&api_key=%s",
 		videoID,
 		mediaType,
-		apiKey,
+		os.Getenv("SHRUTI_API_KEY"),
 	)
 
 	path := getPath(track, ext)
@@ -105,19 +90,16 @@ func (f *ShrutiApiPlatform) download(ctx context.Context, track *state.Track) (s
 		SetContext(ctx).
 		SetOutputFileName(path).
 		Get(dlURL)
-
 	if err != nil {
-		_ = os.Remove(path)
-
+		os.Remove(path)
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			return "", err
 		}
-
 		return "", fmt.Errorf("http download failed: %w", err)
 	}
 
 	if resp.IsError() {
-		_ = os.Remove(path)
+		os.Remove(path)
 		return "", fmt.Errorf("download failed with status: %d", resp.StatusCode())
 	}
 
@@ -126,6 +108,5 @@ func (f *ShrutiApiPlatform) download(ctx context.Context, track *state.Track) (s
 	}
 
 	gologging.InfoF("ShrutiApi: Downloaded %s -> %s", videoID, path)
-
 	return path, nil
 }
