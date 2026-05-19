@@ -1,57 +1,112 @@
-FROM golang:1.26.2-bookworm AS builder
+package platforms
 
-WORKDIR /build
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
 
-# hadolint ignore=DL3015
-RUN apt-get update && \
-    apt-get install -y \
-        unzip \
-        curl \
-        zlib1g-dev && \
-    rm -rf /var/lib/apt/lists/*
+	"github.com/Laky-64/gologging"
+	"github.com/amarnathcjd/gogram/telegram"
 
-COPY go.mod go.sum ./
-RUN go mod tidy
+	state "main/internal/core/models"
+)
 
-COPY install.sh ./
-COPY . .
+const PlatformShrutiApi state.PlatformName = "ShrutiApi"
 
-RUN chmod +x install.sh && \
-    ./install.sh -n --quiet --skip-summary && \
-    CGO_ENABLED=1 go build -v -trimpath -ldflags="-w -s" -o app ./cmd/app/
+type ShrutiApiPlatform struct {
+	name state.PlatformName
+}
 
+func init() {
+	Register(80, &ShrutiApiPlatform{
+		name: PlatformShrutiApi,
+	})
+}
 
-FROM debian:bookworm-slim
+func (f *ShrutiApiPlatform) Name() state.PlatformName {
+	return f.name
+}
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        ffmpeg \
-        curl \
-        unzip && \
-    rm -rf /var/lib/apt/lists/*
+func (f *ShrutiApiPlatform) CanGetTracks(query string) bool {
+	return false
+}
 
-COPY --from=builder /etc/ssl/certs /etc/ssl/certs
+func (f *ShrutiApiPlatform) GetTracks(_ string, _ bool) ([]*state.Track, error) {
+	return nil, errors.New("shrutiapi is a download-only platform")
+}
 
-RUN curl -fL \
-      https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux \
-      -o /usr/local/bin/yt-dlp && \
-    chmod 0755 /usr/local/bin/yt-dlp && \
-    curl -fsSL https://deno.land/install.sh -o /tmp/deno-install.sh && \
-    sh /tmp/deno-install.sh && \
-    rm -f /tmp/deno-install.sh
+func (f *ShrutiApiPlatform) CanDownload(source state.PlatformName) bool {
+	if config.ShrutiAPIURL == "" || config.ShrutiAPIKey == "" {
+		return false
+	}
+	return source == PlatformYouTube
+}
 
-ENV DENO_INSTALL=/root/.deno
-ENV PATH=$DENO_INSTALL/bin:$PATH
+func (f *ShrutiApiPlatform) Download(
+	ctx context.Context,
+	track *state.Track,
+	_ *telegram.NewMessage,
+) (string, error) {
+	if cached := findFile(track); cached != "" {
+		gologging.Debug("ShrutiApi: Download -> Cached File -> " + cached)
+		return cached, nil
+	}
 
-RUN useradd -r -u 10001 appuser && \
-    mkdir -p /app && \
-    chown -R appuser:appuser /app
+	return f.download(ctx, track)
+}
 
-WORKDIR /app
+func (*ShrutiApiPlatform) CanSearch() bool { return false }
 
-COPY --from=builder /build/app /app/app
-RUN chown appuser:appuser /app/app
+func (*ShrutiApiPlatform) Search(string, bool) ([]*state.Track, error) {
+	return nil, nil
+}
 
-USER appuser
+func (f *ShrutiApiPlatform) download(ctx context.Context, track *state.Track) (string, error) {
+	videoID := track.ID
+	if videoID == "" {
+		videoID = track.URL
+	}
 
-ENTRYPOINT ["/app/app"]
+	mediaType := "audio"
+	ext := ".mp3"
+	if track.Video {
+		mediaType = "video"
+		ext = ".mp4"
+	}
+
+	dlURL := fmt.Sprintf(
+		"https://api.shrutibots.site/download?url=%s&type=%s&api_key=%s",
+		videoID,
+		mediaType,
+		os.Getenv("SHRUTI_API_KEY"),
+	)
+
+	path := getPath(track, ext)
+
+	gologging.DebugF("ShrutiApi: Downloading %s (%s)", videoID, mediaType)
+
+	resp, err := rc.R().
+		SetContext(ctx).
+		SetOutputFileName(path).
+		Get(dlURL)
+	if err != nil {
+		os.Remove(path)
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return "", err
+		}
+		return "", fmt.Errorf("http download failed: %w", err)
+	}
+
+	if resp.IsError() {
+		os.Remove(path)
+		return "", fmt.Errorf("download failed with status: %d", resp.StatusCode())
+	}
+
+	if !fileExists(path) {
+		return "", errors.New("empty file returned by api")
+	}
+
+	gologging.InfoF("ShrutiApi: Downloaded %s -> %s", videoID, path)
+	return path, nil
+}
