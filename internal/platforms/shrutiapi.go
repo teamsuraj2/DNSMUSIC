@@ -12,8 +12,10 @@ import (
 	state "main/internal/core/models"
 )
 
-const PlatformShrutiApi state.PlatformName = "ShrutiApi"
-
+const (
+	PlatformShrutiApi state.PlatformName = "ShrutiApi"
+	apiKey = os.Getenv("SHRUTI_API_KEY")
+)
 type ShrutiApiPlatform struct {
 	name state.PlatformName
 }
@@ -37,7 +39,7 @@ func (f *ShrutiApiPlatform) GetTracks(_ string, _ bool) ([]*state.Track, error) 
 }
 
 func (f *ShrutiApiPlatform) CanDownload(source state.PlatformName) bool {
-	if config.ShrutiAPIURL == "" || config.ShrutiAPIKey == "" {
+	if apiKey == "" {
 		return false
 	}
 	return source == PlatformYouTube
@@ -79,7 +81,7 @@ func (f *ShrutiApiPlatform) download(ctx context.Context, track *state.Track) (s
 		"https://api.shrutibots.site/download?url=%s&type=%s&api_key=%s",
 		videoID,
 		mediaType,
-		os.Getenv("SHRUTI_API_KEY"),
+		apiKey,
 	)
 
 	path := getPath(track, ext)
