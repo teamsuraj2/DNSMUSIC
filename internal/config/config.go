@@ -44,8 +44,6 @@ var (
 	OwnerID             int64
 	SpotifyClientID     string
 	SpotifyClientSecret string
-	ShrutiAPIURL        string
-    ShrutiAPIKey        string
 	FallenAPIURL        string
 	FallenAPIKey        string
 	DefaultLang         string
@@ -123,8 +121,6 @@ func loadConfig() {
 	OwnerID = getInt64("OWNER_ID", 0)
 	SpotifyClientID = getString("SPOTIFY_CLIENT_ID", "")
 	SpotifyClientSecret = getString("SPOTIFY_CLIENT_SECRET", "")
-	ShrutiAPIURL = getString("SHRUTI_API_URL", "https://api.shrutibots.site")
-    ShrutiAPIKey = getString("SHRUTI_API_KEY", "")
 	FallenAPIURL = getString("FALLEN_API_URL", "https://beta.fallenapi.fun")
 	FallenAPIKey = getString("FALLEN_API_KEY", "")
 	DefaultLang = getString("DEFAULT_LANG", "en")
