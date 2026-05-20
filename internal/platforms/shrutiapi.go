@@ -9,13 +9,12 @@ import (
 	"github.com/Laky-64/gologging"
 	"github.com/amarnathcjd/gogram/telegram"
 
+	"main/internal/config"
 	state "main/internal/core/models"
 )
 
-const (
-	PlatformShrutiApi state.PlatformName = "ShrutiApi"
-	apiKey = os.Getenv("SHRUTI_API_KEY")
-)
+const PlatformShrutiApi state.PlatformName = "ShrutiApi"
+
 type ShrutiApiPlatform struct {
 	name state.PlatformName
 }
@@ -39,7 +38,7 @@ func (f *ShrutiApiPlatform) GetTracks(_ string, _ bool) ([]*state.Track, error) 
 }
 
 func (f *ShrutiApiPlatform) CanDownload(source state.PlatformName) bool {
-	if apiKey == "" {
+	if config.ShrutiAPIURL == "" || config.ShrutiAPIKey == "" {
 		return false
 	}
 	return source == PlatformYouTube
@@ -78,10 +77,11 @@ func (f *ShrutiApiPlatform) download(ctx context.Context, track *state.Track) (s
 	}
 
 	dlURL := fmt.Sprintf(
-		"https://api.shrutibots.site/download?url=%s&type=%s&api_key=%s",
+		"%s/download?url=%s&type=%s&api_key=%s",
+		config.ShrutiAPIURL,
 		videoID,
 		mediaType,
-		apiKey,
+		config.ShrutiAPIKey,
 	)
 
 	path := getPath(track, ext)
