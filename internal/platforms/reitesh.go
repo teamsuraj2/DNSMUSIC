@@ -83,21 +83,25 @@ func (f *RiteshApiPlatform) download(ctx context.Context, track *state.Track) (s
 		videoID = track.URL
 	}
 
+	dlType := "audio"
 	ext := "webm"
 	if track.Video {
+		dlType = "video"
 		ext = "mp4"
 	}
 
 	path := getPath(track, "."+ext)
 
-	gologging.DebugF("RiteshApi: Requesting %s (%s)", videoID, ext)
+	gologging.DebugF("RiteshApi: Requesting %s (%s)", videoID, dlType)
 
+	// Note: yeh /download endpoint 307 redirect deta hai asli stream URL ki taraf,
+	// isliye redirect-following client aavashyak hai.
 	dlURL := fmt.Sprintf(
-		"%s/downloads/%s/%s.%s",
+		"%s/download?query=%s&dl_type=%s&api_key=%s",
 		riteshApiURL,
-		riteshApiKey,
 		url.QueryEscape(videoID),
-		ext,
+		dlType,
+		url.QueryEscape(riteshApiKey),
 	)
 
 	fileResp, err := rc.R().
